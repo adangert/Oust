@@ -4,7 +4,7 @@ set -eo pipefail
 echo "Watching hci devices..."
 
 while true; do
-    devices=$(hciconfig dev | grep hci | awk '{print $1}' | sed -e 's/://')
+    devices=$(hciconfig | grep hci | awk '{print $1}' | sed -e 's/://')
 
     for device in $devices
     do

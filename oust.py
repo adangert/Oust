@@ -3,6 +3,7 @@ from __future__ import print_function
 import time
 import psmove
 import subprocess
+import os
 from collections import defaultdict
 
 def disconnect_move(move):
@@ -53,6 +54,25 @@ def sleep_controllers(sleep=0.5, leds=(255,255,255), rumble=0, moves=[]):
             othermove.update_leds()
 
 
+#returns the adapter with the fewest connections
+#this allows for an even spread of controllers to adapters
+def get_smallest_adapter():
+    BT_PATH = '/var/lib/bluetooth/'
+    hci_addresses = os.popen("hciconfig | grep Address | awk '{print $3}'").read().split('\n')[:-1]
+    hci_device_count = {}
+    for hci in hci_addresses:
+        device_path = os.path.join(BT_PATH, hci)
+        if os.path.exists(device_path):
+            hci_device_count[hci] = len([con for con in os.listdir(device_path) if ':' in con])
+    if (hci_device_count):
+        smallest_hci = hci_addresses[0]
+        smallest_count = hci_device_count[smallest_hci]
+        for hci, count in hci_device_count.items():
+            if (count < smallest_count):
+                smallest_hci = hci
+                smallest_count = count
+    return smallest_hci
+    
 paired_controllers = []
 controllers_alive = {}
 usb_paired_controllers = []
@@ -73,7 +93,7 @@ while True:
             if move.connection_type == psmove.Conn_USB:
                 #make sure the serial is not None. this might happen if you pull the usb while still in this loop
                 if move.get_serial() not in usb_paired_controllers and move.get_serial() != None:
-                    move.pair()
+                    move.pair_custom(get_smallest_adapter())
                     usb_paired_controllers.append(move.get_serial())
                     print(move.get_serial() + " connected over USB")
                     move.set_leds(255,255,255)
